@@ -13,9 +13,13 @@ var fluent = (function() {
 
   function Token(character, index) {
     for (symbol in symbols) {
-      if (symbols[symbol].test(character)) {
+      if (symbols[symbol] !== null && symbols[symbol].test(character)) {
         this.value = symbol;
       }
+    }
+
+    if (this.value === undefined) {
+      this.value = 'unknown';
     }
 
     this.getValue = function() { return this.value; }
@@ -48,15 +52,7 @@ var fluent = (function() {
   }
 
   function Parser(input) {
-    var tokenizer = new Tokenizer(input),
-
-    transitions = {
-      'az': ['az', 'int', 'space', 'break'],
-      'AZ': ['az', 'break', 'space'],
-      'int': ['space', 'break'],
-      'space': ['az', 'AZ', 'dash', 'break'],
-      'break': ['AZ', 'break']
-    };
+    var tokenizer = new Tokenizer(input);
 
     this.parse = function() {
       var currentToken, nextToken, mistakes = [], rule;
@@ -70,7 +66,7 @@ var fluent = (function() {
           break;
         }
 
-        if (transitions[currentToken.getValue()].indexOf(nextToken.getValue()) == -1) {
+        if (transitions[currentToken.getValue()][nextToken.getValue()] === false) {
           rule = fluent.rule.get(currentToken.getValue(), nextToken.getValue());
           mistakes.push([rule, currentToken.getIndex()]);
         }
@@ -83,7 +79,7 @@ var fluent = (function() {
     return this;
   }
 
-  var rules = {}, symbols = {},
+  var rules = {}, symbols = { unknown: null }, transitions = {},
 
   addRule = function(symbolA, symbolB, name) {
     var rule, key;
@@ -104,6 +100,23 @@ var fluent = (function() {
     symbols[name] = regexp;
   },
 
+  buildTransitions = function() {
+    var rule;
+
+    for (key1 in symbols) {
+      transitions[key1] = {};
+
+      for (key2 in symbols) {
+        transitions[key1][key2] = true;
+      }
+    }
+
+    for (key in rules) {
+      rule = rules[key];
+      transitions[rule.symbolA][rule.symbolB] = false;
+    }
+  },
+
   parse = function(text) {
     var parser = new Parser(text);
 
@@ -119,13 +132,14 @@ var fluent = (function() {
       get: getRule
     },
     symbol: {
-      add: addSymbol
+      add: addSymbol,
+      build: buildTransitions
     }
   };
 })();
 
 fluent.symbol.add('az', /[a-ząćęłóńśźż\-\(\)0-9]/);
-fluent.symbol.add('AZ', /[A-ZĄĆĘŁÓŃŚŹŻ\-]/);
+fluent.symbol.add('AZ', /[A-ZĄĆĘŁÓŃŚŹŻ]/);
 fluent.symbol.add('space', / /);
 fluent.symbol.add('int', /[\.\,\!\?]/);
 fluent.symbol.add('break', /[\\\n]/);
@@ -139,3 +153,5 @@ fluent.rule.add('int', 'az', 'brak spacji po znaku interpunkcyjnym');
 fluent.rule.add('int', 'AZ', 'brak spacji po znaku interpunkcyjnym');
 fluent.rule.add('int', 'int', 'podwójny znak interpunkcyjny');
 fluent.rule.add('break', 'az', 'nowe zdanie zaczęte z małej litery');
+
+fluent.symbol.build();
