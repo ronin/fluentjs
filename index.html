@@ -1,0 +1,60 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <script type="text/javascript" src="fluent.js"></script>
+    <style>
+      span.parser-error { background-color: red; }
+    </style>
+  </head>
+  <body>
+    <textarea id="input" rows="20" cols="40"></textarea>
+    <br />
+    <input type="button" value="Sprawdź" id="check-input" />
+    <br />
+    <br />
+    <div id="info"></div>
+    <div id="preview"></div>
+    <script type="text/javascript">
+      fluent.symbol.add('az', /[a-ząćęłóńśźż\-\(\)0-9]/);
+      fluent.symbol.add('AZ', /[A-ZĄĆĘŁÓŃŚŹŻ]/);
+      fluent.symbol.add('space', / /);
+      fluent.symbol.add('int', /[\.\,\!\?\;]/);
+      fluent.symbol.add('break', /[\\\n]/);
+
+      fluent.rule.add('az', 'AZ', 'capital letter in middle of a word');
+      fluent.rule.add('AZ', 'int', 'capital letter in middle of a word');
+      fluent.rule.add('AZ', 'AZ', 'capital letter in middle of a word');
+      fluent.rule.add('space', 'int', 'space before punctuation character');
+      fluent.rule.add('space', 'space', 'double space');
+      fluent.rule.add('int', 'az', 'missing space after punctuaction character');
+      fluent.rule.add('int', 'AZ', 'missing space after punctuaction character');
+      fluent.rule.add('int', 'int', 'double punctuation character');
+      fluent.rule.add('break', 'az', 'sentence start with small letter');
+
+      fluent.symbol.build();
+
+      var input = document.getElementById("input"),
+          button = document.getElementById("check-input"),
+          info = document.getElementById("info"),
+          preview = document.getElementById("preview");
+
+      button.onclick = function() {
+        var errors, i;
+
+        errors = fluent.parser.parse(input.value);
+
+        info.innerHTML = '';
+
+        if (errors.length > 0) {
+          for (i = 0; i < errors.length; i++) {
+            info.innerHTML += errors[i][0].name + ' - ' + errors[i][1] + '<br />';
+          }
+
+          preview.innerHTML = fluent.parser.highlight(input.value, errors);
+        } else {
+          info.innerHTML = '<span style="color: lightgreen">Text is valid</span>';
+        }
+      }
+    </script>
+  </body>
+</html>
