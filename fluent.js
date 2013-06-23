@@ -38,6 +38,14 @@ var fluent = (function() {
     this.getToken = function() {
       var token;
 
+      if (input[index] === '<') {
+        index++;
+
+        while (input[index] !== '>' && index < input.length) {
+          index++;
+        }
+      }
+
       if (index >= input.length) {
         return new Terminal();
       } else {
@@ -55,7 +63,7 @@ var fluent = (function() {
     var tokenizer = new Tokenizer(input);
 
     this.parse = function() {
-      var currentToken, nextToken, mistakes = [], rule;
+      var currentToken, nextToken, errors = [], rule;
 
       currentToken = tokenizer.getToken();
 
@@ -68,12 +76,12 @@ var fluent = (function() {
 
         if (transitions[currentToken.getValue()][nextToken.getValue()] === false) {
           rule = fluent.rule.get(currentToken.getValue(), nextToken.getValue());
-          mistakes.push([rule, currentToken.getIndex()]);
+          errors.push([rule, currentToken.getIndex()]);
         }
         currentToken = nextToken;
       }
 
-      return mistakes;
+      return errors;
     }
 
     return this;
@@ -121,10 +129,29 @@ var fluent = (function() {
     var parser = new Parser(text);
 
     return parser.parse();
+  },
+
+  highlight = function(text, errors) {
+    var newText, i, error;
+
+    newText = '';
+    error = errors.shift();
+
+    for (i = 0; i < text.length; i++) {
+      if (error !== undefined && error[1] === i) {
+        newText += '<span class="parser-error">' + text[i] + '</span>';
+        error = errors.shift();
+      } else {
+        newText += text[i];
+      }
+    }
+
+    return newText;
   };
 
   return {
     parser: {
+      highlight: highlight,
       parse: parse
     },
     rule: {
@@ -137,21 +164,3 @@ var fluent = (function() {
     }
   };
 })();
-
-fluent.symbol.add('az', /[a-ząćęłóńśźż\-\(\)0-9]/);
-fluent.symbol.add('AZ', /[A-ZĄĆĘŁÓŃŚŹŻ]/);
-fluent.symbol.add('space', / /);
-fluent.symbol.add('int', /[\.\,\!\?]/);
-fluent.symbol.add('break', /[\\\n]/);
-
-fluent.rule.add('az', 'AZ', 'duża litera w środku wyrazu');
-fluent.rule.add('AZ', 'int', 'duża litera w środku wyrazu');
-fluent.rule.add('AZ', 'AZ', 'duża litera w środku wyrazu');
-fluent.rule.add('space', 'int', 'spacja przed znakiem interpunkcyjnym');
-fluent.rule.add('space', 'space', 'podwójna spacja');
-fluent.rule.add('int', 'az', 'brak spacji po znaku interpunkcyjnym');
-fluent.rule.add('int', 'AZ', 'brak spacji po znaku interpunkcyjnym');
-fluent.rule.add('int', 'int', 'podwójny znak interpunkcyjny');
-fluent.rule.add('break', 'az', 'nowe zdanie zaczęte z małej litery');
-
-fluent.symbol.build();
